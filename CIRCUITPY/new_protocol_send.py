@@ -9,14 +9,10 @@ from traceback import format_exception
 # import time
 from os import listdir, remove
 from asyncio import sleep
-from json import dumps
+from json import loads, dumps
 
 from radio_diagnostics import report_diagnostics
 from icpacket import Packet
-
-import camera_settings as cset
-
-
 
 def verify_packet(packet, desired_type):
 	# Verify that the packet has the desired type
@@ -64,7 +60,8 @@ async def send(cubesat, functions):
 	IMAGE_DIRECTORY = "images-to-send" # Change when the camera code is done
 	IMAGE_COUNT_FILE = "image_count.txt" # Placeholder
 	
-	camera_settings = cset.camera_settings
+	with open("camera_settings.json", "r") as k:
+		camera_settings = loads(k)
 
 	report_diagnostics(cubesat.radio1)
 	

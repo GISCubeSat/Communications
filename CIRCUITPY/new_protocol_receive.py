@@ -2,7 +2,7 @@
 import pycubed_rfm9x
 import board
 import digitalio
-# import busio
+import busio
 import time
 import wifi
 from secrets import secrets
@@ -22,8 +22,8 @@ import adafruit_hashlib as hashlib
 
 import radio_diagnostics
 from icpacket import Packet
-from new_comms_protocol.ptp import AsyncPacketTransferProtocol as APTP
-from new_comms_protocol.ftp import FileTransferProtocol as FTP
+from ptp import AsyncPacketTransferProtocol as APTP
+from ftp import FileTransferProtocol as FTP
 
 
 def check_write_permissions():
@@ -116,15 +116,17 @@ async def main():
 	settings_hash = [-1] # hack to pass by reference
 	
 	CS = digitalio.DigitalInOut(board.D5)
-	CS.switch_to_output(True)
+	CS.switch_to_output()
 	RST = digitalio.DigitalInOut(board.D6)
-	RST.switch_to_output(True)
+	RST.switch_to_output()
 
 	RADIO_FREQ_MHZ = 437.4
 	node = const(0xfb)
 	destination = const(0xfa)
 
-	radio = pycubed_rfm9x.RFM9x(board.SPI(), CS, RST, RADIO_FREQ_MHZ)
+	spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+
+	radio = pycubed_rfm9x.RFM9x(spi, CS, RST, RADIO_FREQ_MHZ)
 	radio.spreading_factor = 8
 	radio.node = node
 	radio.destination = destination
@@ -137,7 +139,7 @@ async def main():
 	
 	radio_diagnostics.report_diagnostics(radio)
 	
-	check_write_permissions()
+	# check_write_permissions()
 	
 	# Persistent data
 	try:
@@ -159,6 +161,7 @@ async def main():
 				f.write(" ".join(map(str, to_assemble)))
 	
 	async def save_telemetry(payload):
+		print(payload)
 		filename = datetime.now().isoformat().replace(':','-')
 		filepath = f"received_telemetry/{filename}.txt"
 		with open(filepath, 'w') as f:
@@ -178,6 +181,7 @@ async def main():
 		try:
 			print("Waiting for telemetry ping (handshake 1)")   
 			packet = await ptp.receive_packet()
+			print(packet.categorize())
 			if not verify_packet(packet, "handshake1"):
 				await asyncio.sleep(1)
 				continue

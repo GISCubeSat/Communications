@@ -1,35 +1,15 @@
-# The MIT License (MIT)
+# SPDX-FileCopyrightText: 2017 Tony DiCola for Adafruit Industries
 #
-# Copyright (c) 2017 Tony DiCola for Adafruit Industries
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
+# SPDX-License-Identifier: MIT
+
 """
-`pycubed_rfm9x`
-====================================================
+MODIFIED VERSION of adafruit_rfm9x CircuitPython Library for PyCubed Use
+See https://github.com/adafruit/Adafruit_CircuitPython_RFM9x
 
-CircuitPython module for the RFM95/6/7/8 LoRa 433/915mhz radio modules.  This is
-adapted from the Radiohead library RF95 code from:
-http: www.airspayce.com/mikem/arduino/RadioHead/
-
-* Author(s): Tony DiCola, Jerry Needell
-
-** MODIFIED FOR VR3X MISSION ** https://vr3x.space
+CircuitPython Version: 7.0.0 alpha
+Library Repo: https://github.com/pycubed/library_pycubed.py
+* Edits by: Max Holliday
+Added temperature readout by Nicole Maggard
 """
 import time
 from random import random
@@ -75,6 +55,8 @@ _RH_RF95_REG_23_MAX_PAYLOAD_LENGTH = const(0x23)
 _RH_RF95_REG_24_HOP_PERIOD = const(0x24)
 _RH_RF95_REG_25_FIFO_RX_BYTE_ADDR = const(0x25)
 _RH_RF95_REG_26_MODEM_CONFIG3 = const(0x26)
+
+_RH_RF95_REG_3C_REGTEMP = const(0x3C)
 
 _RH_RF95_REG_40_DIO_MAPPING1 = const(0x40)
 _RH_RF95_REG_41_DIO_MAPPING2 = const(0x41)
@@ -258,12 +240,11 @@ class RFM9x:
         code_rate=5,
         high_power=True,
         baudrate=5000000,
-        rfm95pw=False
+        max_output=False
     ):
         self.high_power = high_power
-        self.RFM95PW=rfm95pw
+        self.max_output=max_output
         self.dio0=False
-        self.debug=True
         # Device support SPI mode 0 (polarity & phase = 0) up to a max of 10mhz.
         # Set Default Baudrate to 5MHz to avoid problems
         self._device = spidev.SPIDevice(spi, cs, baudrate=baudrate, polarity=0, phase=0)
@@ -394,7 +375,7 @@ class RFM9x:
         self.operation_mode = SLEEP_MODE
         time.sleep(0.01)
         self.long_range_mode=False # FSK/OOK Mode
-        self.modulation_type=1 # OOK
+        self.modulation_type=0 # FSK
         self.modulation_shaping = 2
         self._write_u8(0x25,0x00) # no preamble
         self._write_u8(0x26,0x00) # no preamble
@@ -434,17 +415,7 @@ class RFM9x:
             self.preamble_length  = cache[3]
             self.enable_crc       = cache[4]
             self.auto_agc = True
-            self.low_datarate_optimize = True
         return success
-
-
-    def toggle(self,tx=False,rx=False):
-        if tx:
-            self.txrx[0].value=True
-            self.txrx[1].value=False
-        elif rx:
-            self.txrx[0].value=False
-            self.txrx[1].value=True
 
     # pylint: disable=no-member
     # Reconsider pylint: disable when this can be tested
@@ -577,16 +548,14 @@ class RFM9x:
     @tx_power.setter
     def tx_power(self, val):
         val = int(val)
-        if self.RFM95PW is True:
+        if self.max_output is True:
+            print('RFM9X Max Output Power Enabled')
             self._write_u8(_RH_RF95_REG_0B_OCP,0x3F) # set Ocp to 240mA
             self.pa_dac = _RH_RF95_PA_DAC_ENABLE
             self.pa_select = True
             self.max_power = 0b111
             self.output_power=0x0F
             return
-        else:
-            # print('Set RFM95PW=True for max power')
-            pass
 
         if self.high_power:
             if val < 5 or val > 23:
@@ -719,6 +688,27 @@ class RFM9x:
         Incoming packets that fail the CRC check are not processed.  Set to
         False to disable CRC checking and process all incoming packets."""
         return (self._read_u8(_RH_RF95_REG_1E_MODEM_CONFIG2) & 0x04) == 0x04
+    
+    '''@property
+    def temperature(self):
+        """Tries to grab current temp from module"""
+        raw_temp=self._read_u8(_RH_RF95_REG_3C_REGTEMP)
+        temp = (raw_temp & 0x7F)
+        if (raw_temp & 0x80)  == 0x80:
+            temp=~temp+0x01
+
+        return temp+24#Added prescalar for temp'''
+    
+    @property
+    def former_temperature(self):
+        """Tries to grab former temp from module"""
+        raw_temp=self._read_u8(_RH_RF95_REG_5B_FORMER_TEMP)
+        temp = (raw_temp & 0x7F)
+        if (raw_temp & 0x80)  == 0x80:
+            temp=~temp+0x01
+
+        return temp+143#Added prescalar for temp
+    
 
     @enable_crc.setter
     def enable_crc(self, val):
@@ -743,11 +733,22 @@ class RFM9x:
 
     def rx_done(self):
         """Receive status"""
-        # if self.dio0:
-        #     print('RxDIO0: {}, {}'.format(self.dio0.value,hex((self._read_u8(_RH_RF95_REG_12_IRQ_FLAGS) & 0x40) >> 6)))
-        #     return self.dio0.value
-        # else:
-        return (self._read_u8(_RH_RF95_REG_12_IRQ_FLAGS) & 0x40) >> 6
+        if self.dio0:
+            # print('RxDIO0: {}, {}'.format(self.dio0.value,hex((self._read_u8(_RH_RF95_REG_12_IRQ_FLAGS) & 0x40) >> 6)))
+            return self.dio0.value
+        else:
+            return (self._read_u8(_RH_RF95_REG_12_IRQ_FLAGS) & 0x40) >> 6
+
+    async def await_rx(self,timeout=60):
+        _t=time.monotonic()+timeout
+        while not self.rx_done():
+            if time.monotonic() < _t:
+                yield
+            else:
+                # Timed out
+                return False
+        # Received something
+        return True
 
     def crc_error(self):
         """crc status"""
@@ -1098,4 +1099,3 @@ class RFM9x:
         # Clear interrupt.
         self._write_u8(_RH_RF95_REG_12_IRQ_FLAGS, 0xFF)
         return
-
