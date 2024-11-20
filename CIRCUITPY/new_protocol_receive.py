@@ -187,6 +187,7 @@ async def main():
 				continue
 			
 			print("Telemetry ping (handshake 1) received")
+			print("RSSI:", self.radio.rssi())
 			print("TESTING: reporting telemetry")
 			print(packet.payload[1])
 			await save_telemetry(packet.payload[1])
