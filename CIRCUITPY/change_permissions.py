@@ -20,7 +20,7 @@ def to_cpy():
 	answer = input("This will replace boot.py in the current directory to give write permissions to CircuitPython. Continue? (y/n) ")
 	if answer.strip().lower() == 'y':
 		try:
-			with open('boot.py', 'w+') as f:
+			with open('boot.py', 'w') as f:
 				f.write(new_boot % ("False"))
 		except OSError:
 			print("CircuitPython already has write permissions")

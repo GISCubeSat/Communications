@@ -139,7 +139,7 @@ async def main():
 	
 	radio_diagnostics.report_diagnostics(radio)
 	
-	# check_write_permissions()
+	check_write_permissions()
 	
 	# Persistent data
 	try:
@@ -161,7 +161,6 @@ async def main():
 				f.write(" ".join(map(str, to_assemble)))
 	
 	async def save_telemetry(payload):
-		print(payload)
 		filename = datetime.now().isoformat().replace(':','-')
 		filepath = f"received_telemetry/{filename}.txt"
 		with open(filepath, 'w') as f:
