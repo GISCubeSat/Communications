@@ -321,3 +321,5 @@ CIRCUITPY/received_telemetry/
 
 ihscubesat-c9dc08a671e1.json
 secrets.py
+clonedir/
+terminalfiles/
