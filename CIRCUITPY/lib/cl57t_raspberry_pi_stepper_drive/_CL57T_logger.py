@@ -3,11 +3,10 @@
 CL57T stepper driver logger module
 """
 
-from enum import Enum
 
 
 
-class Loglevel(Enum):
+class Loglevel():
     """loglevel"""
     NONE = 0
     ERROR = 10
@@ -29,7 +28,7 @@ class CL57T_logger:
 
 
 
-    def __init__(self, loglevel = Loglevel.INFO, logprefix = "CL57T"):
+    def __init__(self, loglevel, logprefix = "CL57T"):
         """constructor
 
         Args:
@@ -72,5 +71,5 @@ class CL57T_logger:
             message (string): message to log
             loglevel (enum): loglevel of this message (Default value = Loglevel.NONE)
         """
-        if self._loglevel.value >= loglevel.value:
+        if self._loglevel >= loglevel:
             print(self._logprefix+": " +message)

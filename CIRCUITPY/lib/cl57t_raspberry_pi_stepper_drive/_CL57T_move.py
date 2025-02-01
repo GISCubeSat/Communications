@@ -9,27 +9,25 @@ CL57T stepper driver communication module
 """
 
 import time
-from enum import Enum
 import math
-import threading
 from ._CL57T_GPIO_board import GPIO
 from ._CL57T_logger import Loglevel
 
 
 
-class Direction(Enum):
+class Direction():
     """movement direction of the motor"""
     CCW = 0
     CW = 1
 
 
-class MovementAbsRel(Enum):
+class MovementAbsRel():
     """movement absolute or relative"""
     ABSOLUTE = 0
     RELATIVE = 1
 
 
-class MovementPhase(Enum):
+class MovementPhase():
     """movement phase"""
     STANDSTILL = 0
     ACCELERATING = 1
@@ -37,7 +35,7 @@ class MovementPhase(Enum):
     DECELERATING = 3
 
 
-class StopMode(Enum):
+class StopMode():
     """stopmode"""
     NO = 0
     SOFTSTOP = 1
@@ -56,7 +54,7 @@ def set_movement_abs_rel(self, movement_abs_rel):
 
 
 def get_current_position(self):
-    """returns the current motor position in Âµsteps
+    """returns the current motor position in µsteps
 
     Returns:
         bool: current motor position
@@ -66,20 +64,20 @@ def get_current_position(self):
 
 
 def set_current_position(self, new_pos):
-    """overwrites the current motor position in Âµsteps
+    """overwrites the current motor position in µsteps
 
     Args:
-        new_pos (bool): new position of the motor in Âµsteps
+        new_pos (bool): new position of the motor in µsteps
     """
     self._current_pos = new_pos
 
 
 
 def set_max_speed(self, speed):
-    """sets the maximum motor speed in Âµsteps per second
+    """sets the maximum motor speed in µsteps per second
 
     Args:
-        speed (int): speed in Âµsteps per second
+        speed (int): speed in µsteps per second
     """
     if speed < 0.0:
         speed = -speed
@@ -114,10 +112,10 @@ def get_max_speed(self):
 
 
 def set_acceleration(self, acceleration):
-    """sets the motor acceleration/decceleration in Âµsteps per sec per sec
+    """sets the motor acceleration/decceleration in µsteps per sec per sec
 
     Args:
-        acceleration (int): acceleration/decceleration in Âµsteps per sec per sec
+        acceleration (int): acceleration/decceleration in µsteps per sec per sec
     """
     if acceleration == 0.0:
         return
@@ -146,7 +144,7 @@ def get_acceleration(self):
     """returns the motor acceleration/decceleration in steps per sec per sec
 
     Returns:
-        int: acceleration/decceleration in Âµsteps per sec per sec
+        int: acceleration/decceleration in µsteps per sec per sec
     """
     return self._acceleration
 
@@ -248,59 +246,6 @@ def run_to_position_revolutions(self, revolutions, movement_abs_rel = MovementAb
 
 
 
-def run_to_position_steps_threaded(self, steps, movement_abs_rel = MovementAbsRel.ABSOLUTE):
-    """runs the motor to the given position.
-    with acceleration and deceleration
-    does not block the code
-    returns true when the movement if finshed normally and false,
-    when the movement was stopped
-
-    Args:
-        steps (int): amount of steps; can be negative
-        movement_abs_rel (enum): whether the movement should be absolut or relative
-            (Default value = None)
-
-    Returns:
-        stop (enum): how the movement was finished
-    """
-    self._movement_thread = threading.Thread(target=self.run_to_position_steps,
-                                                args=(steps, movement_abs_rel))
-    self._movement_thread.start()
-
-
-
-def run_to_position_revolutions_threaded(self, revolutions, movement_abs_rel = MovementAbsRel.ABSOLUTE):
-    """runs the motor to the given position.
-    with acceleration and deceleration
-    does not block the code
-
-    Args:
-        revolutions (int): amount of revs; can be negative
-        movement_abs_rel (enum): whether the movement should be absolut or relative
-            (Default value = None)
-
-    Returns:
-        stop (enum): how the movement was finished
-    """
-    return self.run_to_position_steps_threaded(round(revolutions * self._steps_per_rev),
-                                                movement_abs_rel)
-
-
-
-def wait_for_movement_finished_threaded(self):
-    """wait for the motor to finish the movement,
-    if startet threaded
-    returns true when the movement if finshed normally and false,
-    when the movement was stopped
-
-    Returns:
-        enum: how the movement was finished
-    """
-    self._movement_thread.join()
-    return self._stop
-
-
-
 def run(self):
     """calculates a new speed if a speed was made
 
@@ -399,7 +344,7 @@ def run_speed(self):
     if not self._step_interval:
         return False
 
-    curtime = time.time_ns()/1000
+    curtime = time.monotonic_ns()/1000
 
     if curtime - self._last_step_time >= self._step_interval:
 
